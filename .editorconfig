@@ -1,0 +1,27 @@
+# EditorConfig: https://editorconfig.org
+root = true
+
+# Default: LF line endings, UTF-8, final newline, trim trailing ws
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Dart / Flutter source
+[*.{dart,yaml,yml}]
+indent_style = space
+indent_size = 2
+
+# Windows batch scripts must keep CRLF
+[*.{bat,cmd}]
+end_of_line = crlf
+
+# Markdown keeps trailing whitespace (line breaks are meaningful)
+[*.md]
+trim_trailing_whitespace = false
+
+# Shell scripts
+[*.{sh,gradle,kts,properties}]
+indent_style = space
+indent_size = 4

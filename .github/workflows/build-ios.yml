@@ -1,0 +1,77 @@
+name: Build iOS (unsigned IPA)
+
+# 手动触发：仓库页面 → Actions → 选 "Build iOS (unsigned IPA)" → Run workflow
+on:
+  workflow_dispatch:
+
+jobs:
+  build_ios:
+    name: Build iOS IPA
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          architecture: x64
+
+      - name: Flutter 版本
+        run: flutter --version
+
+      - name: 生成 iOS 平台工程
+        # 原仓库未提供 ios/ 目录，这里生成标准 Flutter iOS 模板
+        run: flutter create --platforms=ios --project-name jmbox --org com.jmbox .
+
+      - name: 拉取 Dart 依赖
+        run: flutter pub get
+
+      - name: 安装 CocoaPods 依赖
+        run: |
+          cd ios
+          pod install
+        continue-on-error: true
+
+      - name: 配置 Info.plist
+        run: |
+          PLIST=ios/Runner/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName JmBox" "$PLIST" 2>/dev/null \
+            || /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string JmBox" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryAddUsageDescription string 保存图片到相册" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 读取相册图片" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity dict" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSAllowsArbitraryLoads bool true" "$PLIST" 2>/dev/null || true
+          echo "--- 配置结果 ---"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleDisplayName" "$PLIST"
+
+      - name: 编译 iOS（不签名）
+        run: flutter build ios --release --no-codesign
+
+      - name: 打包 IPA
+        run: |
+          cd build
+          rm -rf Payload
+          mkdir Payload
+          APP=$(find ios -name "Runner.app" -maxdepth 4 -type d | head -1)
+          echo "找到 App: $APP"
+          cp -R "$APP" Payload/
+          zip -r -9 nosign.ipa Payload
+
+      - name: 上传 IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: jmbox-nosign.ipa
+          path: build/nosign.ipa
+          retention-days: 30
+
+      - name: 完成提示
+        run: |
+          echo "=========================================="
+          echo " iOS 包构建完成"
+          echo "产物 jmbox-nosign.ipa（未签名）"
+          echo "在页面底部 Artifacts 区域下载"
+          echo "需用 Sideloadly / AltStore 签名后安装"
+          echo "=========================================="

@@ -1,0 +1,28 @@
+# Normalize line endings: store and check out everything as LF by default.
+* text=auto eol=lf
+
+# Windows batch / script files must keep CRLF to run correctly.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files: never touch line endings.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.zip binary
+*.gz binary
+*.so binary
+*.dll binary
+*.a binary
+*.jar binary
+*.class binary
+*.pdf binary
+*.mp3 binary
+*.mp4 binary
