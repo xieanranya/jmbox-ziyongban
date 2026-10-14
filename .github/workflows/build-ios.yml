@@ -1,8 +1,10 @@
 name: Build iOS (unsigned IPA)
 
-# 手动触发：仓库页面 → Actions → 选 "Build iOS (unsigned IPA)" → Run workflow
+# 触发方式：推送到 main 自动构建，或在 Actions 页面手动 Run workflow
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
 
 jobs:
   build_ios:
