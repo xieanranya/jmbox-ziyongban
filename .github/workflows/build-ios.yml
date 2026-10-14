@@ -6,6 +6,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   build_ios:
     name: Build iOS IPA
@@ -69,11 +72,25 @@ jobs:
           path: build/nosign.ipa
           retention-days: 30
 
+      - name: 发布到 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ios-build-${{ github.run_number }}
+          name: JmBox iOS #${{ github.run_number }}
+          body: |
+            自动构建的 iOS 未签名安装包（JmBox）。
+
+            - 产物：`jmbox-nosign.ipa`
+            - 未签名，需用 Sideloadly / AltStore 等工具签名后安装到 iPhone
+            - 构建时间：${{ github.run_number }} 号流水线
+          files: build/nosign.ipa
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: 完成提示
         run: |
           echo "=========================================="
           echo " iOS 包构建完成"
-          echo "产物 jmbox-nosign.ipa（未签名）"
-          echo "在页面底部 Artifacts 区域下载"
+          echo "已发布到 Releases，可直接下载"
           echo "需用 Sideloadly / AltStore 签名后安装"
           echo "=========================================="
