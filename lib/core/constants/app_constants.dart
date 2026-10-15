@@ -26,20 +26,27 @@ const int kAppScrambleId = 220980;
 /// 而用户正盯着这个转圈，3 次足够覆盖「一台坏了、下一台好」的常见情形。
 const int kMaxAttempts = 3;
 
-/// 默认 API 域名列表
+/// 默认 API 域名列表（本地定制：合并多来源候选，提升国内直连成功率）
 const List<String> kDefaultApiHosts = [
   'https://www.cdngwc.cc',
   'https://www.cdngwc.net',
   'https://www.cdngwc.club',
   'https://www.cdnhjk.net',
+  'https://www.cdnbee.net',
+  'https://www.cdnchat.net',
+  'https://www.cdnchat.club',
 ];
 
-/// 默认图片域名列表
+/// 默认图片域名列表（本地定制：合并多来源候选，提升国内直连成功率）
 const List<String> kDefaultImageHosts = [
   'https://cdn-msp.jmapiproxy1.cc',
   'https://cdn-msp.jmapiproxy2.cc',
   'https://cdn-msp2.jmapiproxy2.cc',
   'https://cdn-msp3.jmapiproxy2.cc',
+  'https://cdn-msp.jmdanjongproxy.vip',
+  'https://cdn-msp.jmapinodeudzn.net',
+  'https://cdn-msp.jmapiproxy3.net',
+  'https://cdn-msp2.jmapinodeudzn.net',
 ];
 
 /// 域名服务器 URL 列表

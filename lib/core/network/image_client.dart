@@ -16,9 +16,12 @@ abstract final class ImageEndpoints {
 }
 
 class ImageClient {
-  /// [host] 提供当前图片主机（运行期冻结，选路变化由上层在 bootstrap/设置页完成）。
-  ImageClient({required this._host})
-    : _dio = Dio(
+  /// [hosts] 提供候选图片主机列表（当前选定主机在前，其余为候补）。
+  /// 本地定制：单台失败自动切换下一台候选，全部失败才抛错，
+  /// 避免服务端推荐的域名在部分网络下不通导致图片全挂。
+  ImageClient({required List<String> Function() hosts})
+    : _hosts = hosts,
+      _dio = Dio(
         BaseOptions(
           connectTimeout: const Duration(seconds: 5),
           receiveTimeout: const Duration(seconds: 5),
@@ -26,7 +29,7 @@ class ImageClient {
         ),
       );
 
-  final String? Function() _host;
+  final List<String> Function() _hosts;
 
   final Dio _dio;
 
@@ -38,23 +41,25 @@ class ImageClient {
   Future<Uint8List> getPhoto(int chapterId, String imageName) =>
       _requestImage('${ImageEndpoints.mediaPhotos}/$chapterId/$imageName');
 
-  /// 下载一张图。图片主机运行期同样冻结（auto = 服务端推荐主机，手动 = 设置选定），
-  /// 不做换机重试；仅对瞬时故障（见 [ApiException.retryableOnSameHost]）同机重试。
+  /// 下载一张图。依次尝试候选主机列表：当前主机先按 [kMaxAttempts] 同机重试
+  /// （覆盖瞬时故障），彻底失败后切换下一台候选主机，直到成功或全部用尽。
   Future<Uint8List> _requestImage(String path) async {
-    final host = _host();
-    if (host == null) {
+    final candidates = _hosts();
+    if (candidates.isEmpty) {
       throw const ApiException('没有可用图片域名');
     }
     ApiException? lastError;
-    for (var attempt = 0; attempt < kMaxAttempts; attempt++) {
-      try {
-        return await _requestOnce(host, path);
-      } on ApiException catch (e) {
-        lastError = e;
-        if (!e.retryableOnSameHost) rethrow;
+    for (final host in candidates) {
+      for (var attempt = 0; attempt < kMaxAttempts; attempt++) {
+        try {
+          return await _requestOnce(host, path);
+        } on ApiException catch (e) {
+          lastError = e;
+          if (!e.retryableOnSameHost) break; // 非瞬时故障：换下一台主机
+        }
       }
     }
-    // 尝试次数用尽：抛最后一次的真实错误，上层才看得到确切原因。
+    // 全部候选主机用尽：抛最后一次的真实错误，上层才看得到确切原因。
     throw lastError!;
   }
 

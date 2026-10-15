@@ -10,8 +10,8 @@ import '../../core/network/image_client.dart';
 import '../../core/storage/app_paths.dart';
 
 class ImageRepository {
-  ImageRepository(String? Function() imageHost, {int concurrency = 10})
-    : _imageClient = ImageClient(host: imageHost),
+  ImageRepository(List<String> Function() imageHosts, {int concurrency = 10})
+    : _imageClient = ImageClient(hosts: imageHosts),
       _pool = Pool(concurrency);
 
   final ImageClient _imageClient;

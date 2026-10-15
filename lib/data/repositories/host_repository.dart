@@ -31,6 +31,14 @@ class HostRepository {
   /// 当前图片主机（以回调注入 ImageClient）。
   String? imageHost() => _current(_imageHosts, _pinnedImageHost);
 
+  /// 全部图片主机候选（本地定制：当前选定在前，其余候补在后，去重）。
+  /// 供 ImageClient 在单台失败时自动切换下一台。
+  List<String> imageHosts() {
+    final pinned = _pinnedImageHost;
+    final rest = _imageHosts.where((h) => h != pinned).toList();
+    return pinned != null ? [pinned, ...rest] : rest;
+  }
+
   /// 全部 API 主机（设置页选项列表）。
   List<String> apiHostList() => List.unmodifiable(_apiHosts);
 

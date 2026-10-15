@@ -28,7 +28,7 @@ final apiRepositoryProvider = Provider<ApiRepository>((ref) {
 });
 
 final imageRepositoryProvider = Provider<ImageRepository>((ref) {
-  return ImageRepository(ref.watch(hostRepositoryProvider).imageHost);
+  return ImageRepository(ref.watch(hostRepositoryProvider).imageHosts);
 });
 
 final bookshelfRepositoryProvider = Provider<BookshelfRepository>((ref) => BookshelfRepository());
