@@ -18,6 +18,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: 缓存 Dart 依赖与 CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            ios/Pods
+            ~/Library/Caches/CocoaPods
+          key: macos-deps-${{ hashFiles('pubspec.lock', 'ios/Podfile.lock') }}
+          restore-keys: |
+            macos-deps-
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
