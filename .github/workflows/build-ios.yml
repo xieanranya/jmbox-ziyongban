@@ -31,6 +31,18 @@ jobs:
         # 原仓库未提供 ios/ 目录，这里生成标准 Flutter iOS 模板
         run: flutter create --platforms=ios --project-name jmbox --org com.jmbox .
 
+      - name: 替换 App 图标
+        # 使用自定义图标（assets/app_icon/）覆盖 Flutter 默认图标
+        run: |
+          set -e
+          ICONSET=ios/Runner/Assets.xcassets/AppIcon.appiconset
+          mkdir -p "$ICONSET"
+          rm -f "$ICONSET"/*.png
+          cp assets/app_icon/Icon-*.png "$ICONSET"/
+          cp assets/app_icon/Contents.json "$ICONSET"/Contents.json
+          echo "--- 已安装的图标文件 ---"
+          ls "$ICONSET"
+
       - name: 拉取 Dart 依赖
         run: flutter pub get
 
