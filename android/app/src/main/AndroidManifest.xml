@@ -1,7 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- 同步写入系统亮度（阅读器亮度调节，需动态引导用户授权） -->
+    <uses-permission android:name="android.permission.WRITE_SETTINGS"/>
     <application
-        android:label="JmBox"
+        android:label="安然JM"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

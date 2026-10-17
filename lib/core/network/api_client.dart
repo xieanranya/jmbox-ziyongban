@@ -21,7 +21,6 @@ abstract final class Endpoints {
   static const search = '/search';
   static const promote = '/promote';
   static const promoteList = '/promote_list';
-  static const serialization = '/serialization';
   static const categories = '/categories';
   static const categoriesFilter = '/categories/filter';
   static const week = '/week';
@@ -42,8 +41,9 @@ class ApiClient {
   ApiClient({required this._host})
     : _dio = Dio(
         BaseOptions(
-          connectTimeout: const Duration(seconds: 5),
-          receiveTimeout: const Duration(seconds: 5),
+          // 国内直连下 TLS 握手偏慢（实测 2~5s），超时太短会把活机误判为死机
+          connectTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 15),
           headers: {'User-Agent': kUserAgent},
         ),
       )..interceptors.add(CookieManager(CookieJar()));
@@ -101,12 +101,6 @@ class ApiClient {
   Future<String> getPromoteList(int id, int page) =>
       _requestApi(method: 'GET', path: Endpoints.promoteList, query: {'id': id, 'page': page});
 
-  Future<String> getSerialization(String date, String type, int page) => _requestApi(
-    method: 'GET',
-    path: Endpoints.serialization,
-    query: {'date': date, 'type': type, 'page': page},
-  );
-
   Future<String> getCategories() => _requestApi(method: 'GET', path: Endpoints.categories);
 
   Future<String> getCategoriesFilter(String category, int page, String sort) => _requestApi(
@@ -115,12 +109,14 @@ class ApiClient {
     query: {'c': category, 'o': sort, 'page': page},
   );
 
+  /// 每周必看：期数列表 + 板块（日漫/其他/韩漫）。
   Future<String> getWeekInfo() => _requestApi(method: 'GET', path: Endpoints.week);
 
-  Future<String> getWeekFilter(int categoryId, String typeId) => _requestApi(
+  /// 每周必看内容：某一期（[id]）某一板块（[type]）的整期列表（无分页）。
+  Future<String> getWeekFilter(String id, String type) => _requestApi(
     method: 'GET',
     path: Endpoints.weekFilter,
-    query: {'id': categoryId, 'type': typeId},
+    query: {'id': id, 'type': type},
   );
 
   /// 获取应用设置（含服务端下发的图片主机、API 版本、线路列表）。

@@ -38,4 +38,5 @@ abstract final class AppPaths {
 
   /// images/（图片磁盘缓存根目录）。
   static Directory get images => Directory('$supportPath/images');
+
 }

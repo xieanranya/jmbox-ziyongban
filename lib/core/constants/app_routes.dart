@@ -2,7 +2,7 @@
 abstract final class AppRoutes {
   // ---- 底部 Tab ----
   static const home = '/home';
-  static const discover = '/discover';
+  static const ranking = '/ranking';
   static const bookshelf = '/bookshelf';
   static const profile = '/profile';
 
@@ -12,11 +12,11 @@ abstract final class AppRoutes {
   static const reader = '/reader';
 
   // ---- 列表页（每类型一个路由）----
-  static const category = '/category';
   static const searchResult = '/search-result';
-  static const serialization = '/serialization';
-  static const weekly = '/weekly';
   static const favorites = '/favorites';
+
+  // ---- 每周必看 ----
+  static const weekly = '/weekly';
 
   // ---- 我的 ----
   static const settings = '/profile/settings';

@@ -13,9 +13,9 @@ import '../models/favorite.dart';
 import '../models/like.dart';
 import '../models/promote.dart';
 import '../models/search.dart';
+import '../models/week.dart';
 import '../models/setting.dart';
 import '../models/user.dart';
-import '../models/week.dart';
 
 class ApiRepository {
   ApiRepository(String? Function() apiHost) : _apiClient = ApiClient(host: apiHost);
@@ -84,11 +84,6 @@ class ApiRepository {
   Future<PromoteList> getPromoteList(int id, int page) async =>
       PromoteList.fromJson(await parseJsonMap(_apiClient.getPromoteList(id, page)));
 
-  Future<List<AlbumBrief>> getSerialization(String date, String type, int page) async {
-    final json = await parseJsonMap(_apiClient.getSerialization(date, type, page));
-    return toList(json['list'], AlbumBrief.fromJson);
-  }
-
   Future<CategoryInfo> getCategories() async =>
       CategoryInfo.fromJson(await parseJsonMap(_apiClient.getCategories()));
 
@@ -100,13 +95,13 @@ class ApiRepository {
     );
   }
 
+  /// 每周必看：期数列表 + 板块（日漫/其他/韩漫）。
   Future<WeekInfo> getWeekInfo() async =>
       WeekInfo.fromJson(await parseJsonMap(_apiClient.getWeekInfo()));
 
-  Future<List<AlbumBrief>> getWeekFilter(int categoryId, String weekType) async {
-    final json = await parseJsonMap(_apiClient.getWeekFilter(categoryId, weekType));
-    return toList(json['list'], AlbumBrief.fromJson);
-  }
+  /// 每周必看内容：某一期（[id]）某一板块（[type]）的整期列表。
+  Future<WeekList> getWeekFilter(String id, String type) async =>
+      WeekList.fromJson(await parseJsonMap(_apiClient.getWeekFilter(id, type)));
 
   Future<AppSetting> getSetting() async =>
       AppSetting.fromJson(await parseJsonMap(_apiClient.getSetting()));

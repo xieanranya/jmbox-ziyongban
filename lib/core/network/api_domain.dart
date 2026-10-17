@@ -17,8 +17,8 @@ class ApiDomainFetcher {
   ApiDomainFetcher({this._serverUrls = kDomainServerUrls})
     : _dio = Dio(
         BaseOptions(
-          connectTimeout: const Duration(seconds: 5),
-          receiveTimeout: const Duration(seconds: 5),
+          connectTimeout: const Duration(seconds: 8),
+          receiveTimeout: const Duration(seconds: 8),
           headers: {'User-Agent': kUserAgent},
         ),
       );

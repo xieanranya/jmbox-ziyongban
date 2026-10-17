@@ -1,8 +1,9 @@
-/// 搜索页数据流：搜索历史。
+/// 搜索页数据流：搜索历史 + 标签云板块（来自分类接口的 blocks）。
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/models/category.dart';
 import '../../data/providers.dart';
 
 /// 搜索历史：包装 [SearchHistoryRepository]（去重 / 最新在前 / 上限 20 / 磁盘持久化）。
@@ -34,3 +35,9 @@ class SearchHistoryNotifier extends AsyncNotifier<List<String>> {
 final searchHistoryProvider = AsyncNotifierProvider<SearchHistoryNotifier, List<String>>(
   SearchHistoryNotifier.new,
 );
+
+/// 标签云板块（发现页迁入搜索页）：主题 / 角色 / 特殊PLAY / 其他。
+final searchTagBlocksProvider = FutureProvider.autoDispose<List<CategoryBlock>>((ref) async {
+  final info = await ref.watch(apiRepositoryProvider).getCategories();
+  return info.blocks;
+});

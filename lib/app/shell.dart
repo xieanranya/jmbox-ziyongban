@@ -71,9 +71,9 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
             label: '首页',
           ),
           NavigationDestination(
-            icon: Icon(Icons.explore_outlined),
-            selectedIcon: Icon(Icons.explore),
-            label: '发现',
+            icon: Icon(Icons.leaderboard_outlined),
+            selectedIcon: Icon(Icons.leaderboard),
+            label: '排行榜',
           ),
           NavigationDestination(
             icon: Icon(Icons.collections_bookmark_outlined),

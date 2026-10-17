@@ -8,8 +8,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_state.dart';
 import '../../core/constants/theme.dart';
+import '../../core/network/host_probe.dart';
 import '../../data/models/config.dart';
 import '../../data/providers.dart';
+import '../../data/repositories/host_repository.dart';
 import '../../data/session_providers.dart';
 
 class SettingsController extends AsyncNotifier<AppConfig> {
@@ -52,11 +54,13 @@ class SettingsController extends AsyncNotifier<AppConfig> {
   }
 
   /// 每次获取都刷新一次（拉最新域名，与 bootstrap 一致）；失败沿用现有列表。
+  /// 之后探活：当前主机不通时自动切到实测可用的最快一台。
   Future<List<String>> fetchApiHosts() async {
     final hostRepository = ref.read(hostRepositoryProvider);
     try {
       await hostRepository.refreshApiHosts();
     } catch (_) {}
+    await _ensureAliveApiHost(hostRepository);
     return hostRepository.apiHostList();
   }
 
@@ -70,7 +74,30 @@ class SettingsController extends AsyncNotifier<AppConfig> {
     // 拉取失败时内部推荐主机为旧值/null：auto 落到队首（上次推荐或内置），
     // 手动则固定 config 值，均与 bootstrap 的回退语义一致。
     hostRepository.applyImageSelection(auto: config.imageAuto, host: config.imageHost);
+    await _ensureAliveImageHost(hostRepository);
     return hostRepository.imageHostList();
+  }
+
+  /// API 主机探活：当前主机无 HTTP 响应 → 切到候选列表中实测可用的最快一台。
+  Future<void> _ensureAliveApiHost(HostRepository hostRepository) async {
+    try {
+      final current = hostRepository.apiHost();
+      if (current != null && await probeHost(current)) return;
+      final alive = await probeAliveHosts(hostRepository.apiHostList());
+      if (alive.isNotEmpty) hostRepository.applyApiSelection(alive.first);
+    } catch (_) {}
+  }
+
+  /// 图片主机探活：语义同上，仅当内存选路失效时改 pin。
+  Future<void> _ensureAliveImageHost(HostRepository hostRepository) async {
+    try {
+      final current = hostRepository.imageHost();
+      if (current != null && await probeHost(current)) return;
+      final alive = await probeAliveHosts(hostRepository.imageHostList());
+      if (alive.isNotEmpty) {
+        hostRepository.applyImageSelection(auto: false, host: alive.first);
+      }
+    } catch (_) {}
   }
 
   Future<bool> _set(bool Function() action) async {
