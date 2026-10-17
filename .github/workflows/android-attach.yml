@@ -1,7 +1,7 @@
 name: Attach Android APK to v7
 
 # 一次性任务：构建安卓 APK 并挂到已发布的 ios-build-7 版本下。
-# 仅当本文件变化时触发（即本次推送），之后不会再自动运行。
+# 触发条件：本文件或 android 配置变化时运行（用于把 APK 挂到 Release）。
 on:
   push:
     paths:
