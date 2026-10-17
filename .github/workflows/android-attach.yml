@@ -23,7 +23,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -32,6 +32,13 @@ jobs:
 
       - name: Flutter 版本
         run: flutter --version
+
+      - name: 切换 Gradle 下载源
+        # 项目 wrapper 指向腾讯镜像（国内快），GitHub runner 拉不动，CI 内改回官方源
+        run: sed -i 's#https://mirrors.cloud.tencent.com/gradle/#https://services.gradle.org/distributions/#g' android/gradle/wrapper/gradle-wrapper.properties
+
+      - name: 接受 Android SDK 许可
+        run: yes | flutter doctor --android-licenses || true
 
       - name: 拉取 Dart 依赖
         run: flutter pub get
