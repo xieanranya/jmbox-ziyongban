@@ -6,6 +6,7 @@ on:
   push:
     paths:
       - '.github/workflows/android-attach.yml'
+      - 'android/**'
 
 permissions:
   contents: write
