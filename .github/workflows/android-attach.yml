@@ -12,46 +12,12 @@ permissions:
   contents: write
 
 jobs:
-  build_android:
-    name: Build Android APK
+  attach_apk:
+    name: Attach APK to release
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-
-      - name: Flutter 版本
-        run: flutter --version
-
-      - name: 切换 Gradle 下载源
-        # 项目 wrapper 指向腾讯镜像（国内快），GitHub runner 拉不动，CI 内改回官方源
-        run: sed -i 's#https://mirrors.cloud.tencent.com/gradle/#https://services.gradle.org/distributions/#g' android/gradle/wrapper/gradle-wrapper.properties
-
-      - name: 接受 Android SDK 许可
-        run: yes | flutter doctor --android-licenses || true
-
-      - name: 拉取 Dart 依赖
-        run: flutter pub get
-
-      - name: 构建 Release APK
-        run: flutter build apk --release
-
-      - name: 重命名产物
-        run: |
-          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f1)
-          cp build/app/outputs/flutter-apk/app-release.apk "JmBox_v${VERSION}.apk"
-          ls -lh JmBox_v*.apk
 
       - name: 挂到 ios-build-7 Release
         uses: softprops/action-gh-release@v2
@@ -63,6 +29,6 @@ jobs:
 
             - `nosign.ipa`：iOS 未签名安装包，需用 Sideloadly / AltStore 签名后安装
             - `JmBox_v1.0.48.apk`：Android 安装包（debug 签名，直接安装）
-          files: JmBox_v*.apk
+          files: release/JmBox_v1.0.48.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
