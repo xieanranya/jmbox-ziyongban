@@ -1,6 +1,7 @@
 /// 应用配置模型（config.json）。
 library;
 
+import '../../core/constants/enhance.dart';
 import '../../core/constants/theme.dart';
 
 class AppConfig {
@@ -12,6 +13,10 @@ class AppConfig {
     this.imageHost = '',
     this.autoCheckin = false,
     this.themeSetting = ThemeSetting.system,
+    this.enhanceLevel = EnhanceLevel.off,
+    this.proxyEnabled = false,
+    this.proxyHost = '127.0.0.1',
+    this.proxyPort = 7890,
   });
 
   factory AppConfig.fromJson(Map<String, dynamic> json) => AppConfig(
@@ -25,6 +30,10 @@ class AppConfig {
       (e) => e.value == json['theme_setting'],
       orElse: () => ThemeSetting.system,
     ),
+    enhanceLevel: EnhanceLevel.fromValue(json['enhance_level'] as String?),
+    proxyEnabled: json['proxy_enabled'] as bool? ?? false,
+    proxyHost: json['proxy_host'] as String? ?? '127.0.0.1',
+    proxyPort: json['proxy_port'] as int? ?? 7890,
   );
 
   final String username;
@@ -43,6 +52,21 @@ class AppConfig {
 
   final ThemeSetting themeSetting;
 
+  /// 画质增强（超级分辨率）档位。
+  final EnhanceLevel enhanceLevel;
+
+  /// 是否启用 HTTP 代理（API 与图片请求都走）。
+  final bool proxyEnabled;
+
+  /// 代理主机。
+  final String proxyHost;
+
+  /// 代理端口。
+  final int proxyPort;
+
+  /// 展示用代理地址。
+  String get proxyDisplay => '${proxyHost.trim()}:$proxyPort';
+
   Map<String, dynamic> toJson() => {
     'username': username,
     'password': password,
@@ -51,6 +75,10 @@ class AppConfig {
     'image_host': imageHost,
     'auto_checkin': autoCheckin,
     'theme_setting': themeSetting.value,
+    'enhance_level': enhanceLevel.value,
+    'proxy_enabled': proxyEnabled,
+    'proxy_host': proxyHost,
+    'proxy_port': proxyPort,
   };
 
   AppConfig copyWith({
@@ -61,6 +89,10 @@ class AppConfig {
     String? imageHost,
     bool? autoCheckin,
     ThemeSetting? themeSetting,
+    EnhanceLevel? enhanceLevel,
+    bool? proxyEnabled,
+    String? proxyHost,
+    int? proxyPort,
   }) => AppConfig(
     username: username ?? this.username,
     password: password ?? this.password,
@@ -69,5 +101,9 @@ class AppConfig {
     imageHost: imageHost ?? this.imageHost,
     autoCheckin: autoCheckin ?? this.autoCheckin,
     themeSetting: themeSetting ?? this.themeSetting,
+    enhanceLevel: enhanceLevel ?? this.enhanceLevel,
+    proxyEnabled: proxyEnabled ?? this.proxyEnabled,
+    proxyHost: proxyHost ?? this.proxyHost,
+    proxyPort: proxyPort ?? this.proxyPort,
   );
 }

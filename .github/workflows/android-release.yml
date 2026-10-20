@@ -1,0 +1,41 @@
+name: Release Android APK
+
+# 推 v* tag 时：把仓库 release/ 下的 APK 挂到同名 Release（不存在则自动创建）。
+# 约定：发新版 = 升 pubspec 版本号 → 放 release/JmBox_vX.Y.Z.apk → 打 tag vX.Y.Z 推送。
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release_apk:
+    name: Attach APK to release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: 挂 APK 到 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: JmBox ${{ github.ref_name }}
+          body: |
+            ## JmBox ${{ github.ref_name }}
+
+            **画质增强（五档）**
+            - 关闭 / 标准 / 增强 / 超级：Lanczos-3 超分放大 + USM 锐化 + 清晰度/对比度
+            - AI 超分：内置 Real-ESRGAN-General-x4v3 模型（TFLite，4.9MB），GPU 优先、CPU 兜底
+
+            **其他**
+            - 代理模式：HTTP 代理（Clash/v2ray 混合端口），设置页热生效 + 连接测试
+            - 网络诊断：一键探测全部 API/图片域名可达性与延迟
+
+            **文件**
+            - `JmBox_v1.0.50.apk`：Android 安装包（debug 签名，直接安装）
+          files: release/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

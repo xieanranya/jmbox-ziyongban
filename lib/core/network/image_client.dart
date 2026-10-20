@@ -2,12 +2,15 @@
 library;
 
 import 'dart:developer';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 
 import '../constants/app_constants.dart';
 import 'exception.dart';
+import 'proxy_config.dart';
 
 /// 图片端点路径。
 abstract final class ImageEndpoints {
@@ -17,19 +20,33 @@ abstract final class ImageEndpoints {
 
 class ImageClient {
   /// [host] 提供当前图片主机（运行期冻结，选路变化由上层在 bootstrap/设置页完成）。
-  ImageClient({required this._host})
-    : _dio = Dio(
+  /// [proxy] 初始代理配置；运行期变更经 [applyProxy] 热生效。
+  ImageClient({required this._host, ProxyConfig? proxy})
+    : _httpClient = HttpClient(),
+      _dio = Dio(
         BaseOptions(
           // 国内直连下 TLS 握手偏慢（实测 2~5s），超时太短会把活机误判为死机
           connectTimeout: const Duration(seconds: 10),
           receiveTimeout: const Duration(seconds: 15),
           headers: {'User-Agent': kUserAgent},
         ),
-      );
+      ) {
+    _dio.httpClientAdapter = IOHttpClientAdapter(createHttpClient: () => _httpClient);
+    applyProxy(proxy);
+  }
 
   final String? Function() _host;
 
   final Dio _dio;
+
+  /// 自持 HttpClient（供适配器复用）：代理切换只需改 findProxy，无需重建 Dio。
+  final HttpClient _httpClient;
+
+  /// 运行期更新代理：null 或未启用 = 直连（DIRECT）。
+  void applyProxy(ProxyConfig? proxy) {
+    final value = proxy?.findProxyValue;
+    _httpClient.findProxy = value == null ? (uri) => 'DIRECT' : (uri) => value;
+  }
 
   /// 封面图字节（`imageName` 可为 `{albumId}.jpg` 或 `{albumId}_3x4.jpg`）。
   Future<Uint8List> getCover(String imageName) =>

@@ -3,6 +3,7 @@ library;
 
 import 'dart:convert';
 
+import '../../core/constants/enhance.dart';
 import '../../core/constants/theme.dart';
 import '../../core/storage/app_paths.dart';
 import '../models/config.dart';
@@ -43,6 +44,10 @@ class ConfigRepository {
     String? imageHost,
     bool? autoCheckin,
     ThemeSetting? themeSetting,
+    EnhanceLevel? enhanceLevel,
+    bool? proxyEnabled,
+    String? proxyHost,
+    int? proxyPort,
   }) {
     final latest = read();
     final updated = latest.copyWith(
@@ -53,6 +58,10 @@ class ConfigRepository {
       imageHost: imageHost,
       autoCheckin: autoCheckin,
       themeSetting: themeSetting,
+      enhanceLevel: enhanceLevel,
+      proxyEnabled: proxyEnabled,
+      proxyHost: proxyHost,
+      proxyPort: proxyPort,
     );
     _writeToDisk(updated);
     _cache = updated;

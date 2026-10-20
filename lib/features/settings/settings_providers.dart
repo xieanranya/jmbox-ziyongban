@@ -7,8 +7,10 @@ library;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_state.dart';
+import '../../core/constants/enhance.dart';
 import '../../core/constants/theme.dart';
 import '../../core/network/host_probe.dart';
+import '../../core/network/proxy_config.dart';
 import '../../data/models/config.dart';
 import '../../data/providers.dart';
 import '../../data/repositories/host_repository.dart';
@@ -24,8 +26,36 @@ class SettingsController extends AsyncNotifier<AppConfig> {
     return _set(() => ref.read(configRepositoryProvider).updateWith(themeSetting: value));
   }
 
+  /// 画质增强档位：纯展示层参数，持久化即生效（阅读器 watch 本配置）。
+  Future<bool> setEnhanceLevel(EnhanceLevel value) {
+    return _set(() => ref.read(configRepositoryProvider).updateWith(enhanceLevel: value));
+  }
+
   Future<bool> setAutoCheckin(bool value) =>
       _set(() => ref.read(configRepositoryProvider).updateWith(autoCheckin: value));
+
+  /// 代理开关与地址：先持久化，再热应用到 API/图片两个客户端（无需重启）。
+  Future<bool> setProxy({required bool enabled, String? host, int? port}) async {
+    final ok = await _set(
+      () => ref.read(configRepositoryProvider).updateWith(
+        proxyEnabled: enabled,
+        proxyHost: host,
+        proxyPort: port,
+      ),
+    );
+    if (ok) applyProxyToNetwork();
+    return ok;
+  }
+
+  /// 把当前配置的代理热应用到网络层（两个仓库各持一个 Dio 客户端）。
+  void applyProxyToNetwork() {
+    final config = ref.read(configRepositoryProvider).read();
+    final proxy = config.proxyEnabled
+        ? ProxyConfig(enabled: true, host: config.proxyHost, port: config.proxyPort)
+        : const ProxyConfig.disabled();
+    ref.read(apiRepositoryProvider).applyProxy(proxy);
+    ref.read(imageRepositoryProvider).applyProxy(proxy);
+  }
 
   /// 应用 API 域名选择：先经 HostRepository 生效，再持久化。
   /// 换机后旧会话必失效，故带凭据时在新域名上重新登录。

@@ -4,13 +4,16 @@
 library;
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 
 import '../constants/app_constants.dart';
 import 'exception.dart';
+import 'proxy_config.dart';
 import '../utils/jm_crypto.dart';
 
 /// API 端点路径。
@@ -38,19 +41,34 @@ abstract final class Endpoints {
 
 class ApiClient {
   /// [host] 提供当前 API 主机（运行期冻结，选路变化由上层在 bootstrap/设置页完成）。
-  ApiClient({required this._host})
-    : _dio = Dio(
+  /// [proxy] 初始代理配置；运行期变更经 [applyProxy] 热生效。
+  ApiClient({required this._host, ProxyConfig? proxy})
+    : _httpClient = HttpClient(),
+      _dio = Dio(
         BaseOptions(
           // 国内直连下 TLS 握手偏慢（实测 2~5s），超时太短会把活机误判为死机
           connectTimeout: const Duration(seconds: 10),
           receiveTimeout: const Duration(seconds: 15),
           headers: {'User-Agent': kUserAgent},
         ),
-      )..interceptors.add(CookieManager(CookieJar()));
+      )..interceptors.add(CookieManager(CookieJar())) {
+    // HttpClient 由本类持有：findProxy 每请求都会读取，改字段即全局热生效。
+    _dio.httpClientAdapter = IOHttpClientAdapter(createHttpClient: () => _httpClient);
+    applyProxy(proxy);
+  }
 
   final String? Function() _host;
 
   final Dio _dio;
+
+  /// 自持 HttpClient（供适配器复用）：代理切换只需改 findProxy，无需重建 Dio。
+  final HttpClient _httpClient;
+
+  /// 运行期更新代理：null 或未启用 = 直连（DIRECT）。
+  void applyProxy(ProxyConfig? proxy) {
+    final value = proxy?.findProxyValue;
+    _httpClient.findProxy = value == null ? (uri) => 'DIRECT' : (uri) => value;
+  }
 
   // ---- 专辑 / 章节 ----
 

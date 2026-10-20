@@ -4,6 +4,7 @@ library;
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/sort.dart';
 import '../../core/network/api_client.dart';
+import '../../core/network/proxy_config.dart';
 import '../../core/utils/json_utils.dart';
 import '../models/album.dart';
 import '../models/category.dart';
@@ -18,9 +19,13 @@ import '../models/setting.dart';
 import '../models/user.dart';
 
 class ApiRepository {
-  ApiRepository(String? Function() apiHost) : _apiClient = ApiClient(host: apiHost);
+  ApiRepository(String? Function() apiHost, {ProxyConfig? proxy})
+    : _apiClient = ApiClient(host: apiHost, proxy: proxy);
 
   final ApiClient _apiClient;
+
+  /// 运行期切换代理（设置页保存后热生效，无需重建仓库）。
+  void applyProxy(ProxyConfig? proxy) => _apiClient.applyProxy(proxy);
 
   // ---- 专辑 / 章节 ----
 

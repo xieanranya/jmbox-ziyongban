@@ -10,19 +10,16 @@ library;
 import 'package:dio/dio.dart';
 
 import '../constants/app_constants.dart';
+import 'proxy_config.dart';
 
 /// 单台主机探活：[timeout] 内拿到任意 HTTP 响应即存活。
-Future<bool> probeHost(String host, {Duration timeout = const Duration(seconds: 4)}) async {
-  final dio = Dio(
-    BaseOptions(
-      connectTimeout: timeout,
-      receiveTimeout: timeout,
-      sendTimeout: timeout,
-      headers: {'User-Agent': kUserAgent},
-      // 任意状态码都不算错：能收到 HTTP 响应就说明网络层可达
-      validateStatus: (_) => true,
-    ),
-  );
+/// [proxy] 非空且启用时经代理探测（验证代理链路是否可用）。
+Future<bool> probeHost(
+  String host, {
+  Duration timeout = const Duration(seconds: 4),
+  ProxyConfig? proxy,
+}) async {
+  final dio = _buildProbeDio(timeout, proxy);
   try {
     await dio.get<void>('$host/');
     return true;
@@ -31,7 +28,28 @@ Future<bool> probeHost(String host, {Duration timeout = const Duration(seconds: 
   } catch (_) {
     return false;
   } finally {
-    dio.close();
+    dio.close(force: true);
+  }
+}
+
+/// 单台主机计时探活（网络诊断用）：返回 (是否可达, 耗时毫秒)。
+Future<(bool, int)> probeHostDetailed(
+  String host, {
+  Duration timeout = const Duration(seconds: 4),
+  ProxyConfig? proxy,
+}) async {
+  final dio = _buildProbeDio(timeout, proxy);
+  final sw = Stopwatch()..start();
+  try {
+    await dio.get<void>('$host/');
+    return (true, sw.elapsedMilliseconds);
+  } on DioException catch (e) {
+    return (e.response != null, sw.elapsedMilliseconds);
+  } catch (_) {
+    return (false, sw.elapsedMilliseconds);
+  } finally {
+    sw.stop();
+    dio.close(force: true);
   }
 }
 
@@ -39,13 +57,29 @@ Future<bool> probeHost(String host, {Duration timeout = const Duration(seconds: 
 Future<List<String>> probeAliveHosts(
   Iterable<String> hosts, {
   Duration timeout = const Duration(seconds: 4),
+  ProxyConfig? proxy,
 }) async {
   final alive = <String>[];
   await Future.wait([
     for (final host in hosts)
-      probeHost(host, timeout: timeout).then((ok) {
+      probeHost(host, timeout: timeout, proxy: proxy).then((ok) {
         if (ok) alive.add(host);
       }),
   ]);
   return alive;
+}
+
+/// 探活专用 Dio：任意状态码都不算错（能收到 HTTP 响应即链路可达）。
+Dio _buildProbeDio(Duration timeout, ProxyConfig? proxy) {
+  final dio = Dio(
+    BaseOptions(
+      connectTimeout: timeout,
+      receiveTimeout: timeout,
+      sendTimeout: timeout,
+      headers: {'User-Agent': kUserAgent},
+      validateStatus: (_) => true,
+    ),
+  );
+  configureDioProxy(dio, proxy);
+  return dio;
 }
