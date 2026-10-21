@@ -2,6 +2,12 @@
 
 基于 Flutter 的 Jmcomic 第三方客户端
 
+## 下载
+
+- **Android**：最新版 APK 见 [Releases](https://github.com/xieanranya/jmbox-ziyongban/releases) 中标有 Latest 的 `JmBox_vX.Y.Z.apk`（debug 签名，可直接安装）
+- **iOS**：未签名 IPA 见 Releases 中的 `JmBox iOS #N`（`nosign.ipa`，需 Sideloadly / AltStore 签名后安装）
+- 两平台版本各自独立发布，互不影响
+
 ## 功能特性
 
 - **浏览**：首页推荐、发现（分类 / 连载 / 每周）、关键词搜索
