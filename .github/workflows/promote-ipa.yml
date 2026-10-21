@@ -1,0 +1,42 @@
+name: Promote IPA to version release
+
+# 一次性修复：把已生成的 iOS IPA（ios-build-13 的资产）直接搬进 v1.0.50 Release，
+# 不重新构建、不排队，全程约 30 秒。
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    name: Attach IPA to v1.0.50
+    runs-on: ubuntu-latest
+    steps:
+      - name: 搬运 IPA 到 v1.0.50
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          TAG="v1.0.50"
+          SRC="https://github.com/xieanranya/jmbox-ziyongban/releases/download/ios-build-13/nosign.ipa"
+          echo "下载已生成的 IPA…"
+          curl -sSLf --retry 5 --retry-all-errors -o nosign.ipa "$SRC"
+          ls -la nosign.ipa
+          RID=$(curl -sSf -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/$TAG" | jq -r '.id')
+          AID=$(curl -sS -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/$RID/assets" | jq -r '.[] | select(.name=="nosign.ipa") | .id' | head -1)
+          if [ -n "$AID" ]; then
+            echo "替换旧资产 $AID"
+            curl -sSf -X DELETE -H "Authorization: Bearer $GITHUB_TOKEN" \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/assets/$AID"
+          fi
+          echo "上传到 $TAG…"
+          curl -sSf --retry 5 --retry-delay 10 --retry-all-errors -X POST \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Content-Type: application/octet-stream" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/$RID/assets?name=nosign.ipa" \
+            --data-binary @nosign.ipa
+          echo "✅ IPA 已挂到 $TAG"
