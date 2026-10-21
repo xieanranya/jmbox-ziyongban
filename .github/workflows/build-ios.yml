@@ -99,7 +99,7 @@ jobs:
           retention-days: 30
 
       - name: 发布到 Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2.4.2
         with:
           make_latest: false
           tag_name: ios-build-${{ github.run_number }}
@@ -127,9 +127,10 @@ jobs:
           VERSION=$(sed -n 's/^version: *//p' pubspec.yaml | cut -d'+' -f1)
           TAG="v$VERSION"
           echo "重新固定 Latest 到 $TAG"
-          curl -sS -X PATCH \
+          curl -sSf -X PATCH \
             -H "Authorization: Bearer $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github+json" \
+            -H "Content-Type: application/json" \
             "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/$TAG" \
             -d '{"make_latest": true}' || echo "Release $TAG 不存在（尚未发布安卓版），跳过"
         env:
