@@ -9,7 +9,7 @@
 1. 升 `pubspec.yaml` 版本号（铁律：有更改就必须升版本）
 2. 构建安卓 APK → 放入 `release/JmBox_vX.Y.Z.apk`
 3. 打 tag `vX.Y.Z` 推送 → CI 自动挂 APK 到 Release（占据 Latest）
-4. 推送 main → CI 自动构建 iOS 未签名 IPA，并直接挂到当前版本的 Release 上（`nosign.ipa` 与 APK 同页，双版本合一；不再单独发 ios-build-N）
+4. 推送 main → CI 自动构建 iOS 未签名 IPA，并直接挂到当前版本的 Release 上（`nosign.ipa` 与 APK 同页，双版本合一；上传带 5 次自动重试防网络断流）
 
 ## 下载
 

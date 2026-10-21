@@ -124,7 +124,7 @@ jobs:
             curl -sSf -X DELETE -H "Authorization: Bearer $GITHUB_TOKEN" \
               "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/assets/$ASSET_ID"
           fi
-          curl -sSf -X POST \
+          curl -sSf --retry 5 --retry-delay 10 --retry-all-errors --connect-timeout 30 -X POST \
             -H "Authorization: Bearer $GITHUB_TOKEN" \
             -H "Content-Type: application/octet-stream" \
             "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets?name=nosign.ipa" \
