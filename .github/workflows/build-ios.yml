@@ -101,6 +101,7 @@ jobs:
       - name: 发布到 Release
         uses: softprops/action-gh-release@v2
         with:
+          make_latest: false
           tag_name: ios-build-${{ github.run_number }}
           name: JmBox iOS #${{ github.run_number }}
           body: |
