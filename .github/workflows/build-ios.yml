@@ -121,3 +121,16 @@ jobs:
           echo "已发布到 Releases，可直接下载"
           echo "需用 Sideloadly / AltStore 签名后安装"
           echo "=========================================="
+
+      - name: 保持安卓版为 Latest（iOS 发布后重新钉回）
+        run: |
+          VERSION=$(sed -n 's/^version: *//p' pubspec.yaml | cut -d'+' -f1)
+          TAG="v$VERSION"
+          echo "重新固定 Latest 到 $TAG"
+          curl -sS -X PATCH \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/$TAG" \
+            -d '{"make_latest": true}' || echo "Release $TAG 不存在（尚未发布安卓版），跳过"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

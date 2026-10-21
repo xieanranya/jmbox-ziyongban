@@ -2,6 +2,15 @@
 
 基于 Flutter 的 Jmcomic 第三方客户端
 
+## 发布流程（双版本）
+
+每次发新版，两个平台一起发布：
+
+1. 升 `pubspec.yaml` 版本号（铁律：有更改就必须升版本）
+2. 构建安卓 APK → 放入 `release/JmBox_vX.Y.Z.apk`
+3. 打 tag `vX.Y.Z` 推送 → CI 自动挂 APK 到 Release（占据 Latest）
+4. 推送 main → CI 自动构建 iOS 未签名 IPA 并发布，并把 Latest 钉回安卓版
+
 ## 下载
 
 - **Android**：最新版 APK 见 [Releases](https://github.com/xieanranya/jmbox-ziyongban/releases) 中标有 Latest 的 `JmBox_vX.Y.Z.apk`（debug 签名，可直接安装）
