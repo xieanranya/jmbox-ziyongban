@@ -16,6 +16,7 @@
 - **Android**：最新版 APK 见 [Releases](https://github.com/xieanranya/jmbox-ziyongban/releases) 中标有 Latest 的 `JmBox_vX.Y.Z.apk`（debug 签名，可直接安装）
 - **iOS**：未签名 IPA 见 Releases 中的 `JmBox iOS #N`（`nosign.ipa`，需 Sideloadly / AltStore 签名后安装）
 - 两平台版本各自独立发布，互不影响
+- 仓库首页 Latest 标记始终指向最新安卓 APK；iOS 未签名 IPA 每次推 main 自动构建发布
 
 ## 功能特性
 

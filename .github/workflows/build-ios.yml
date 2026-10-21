@@ -123,15 +123,31 @@ jobs:
           echo "=========================================="
 
       - name: 保持安卓版为 Latest（iOS 发布后重新钉回）
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION=$(sed -n 's/^version: *//p' pubspec.yaml | cut -d'+' -f1)
           TAG="v$VERSION"
           echo "重新固定 Latest 到 $TAG"
+          RELEASE_ID=$(curl -sSf -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/$TAG" | jq -r '.id')
+          if [ -z "$RELEASE_ID" ] || [ "$RELEASE_ID" = "null" ]; then
+            echo "安卓 Release $TAG 不存在（尚未发布），跳过"
+            exit 0
+          fi
           curl -sSf -X PATCH \
             -H "Authorization: Bearer $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             -H "Content-Type: application/json" \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/$TAG" \
-            -d '{"make_latest": true}' || echo "Release $TAG 不存在（尚未发布安卓版），跳过"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" \
+            -d '{"make_latest": "true"}'
+          IOS_ID=$(curl -sSf -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/ios-build-$GITHUB_RUN_NUMBER" | jq -r '.id' || echo null)
+          if [ -n "$IOS_ID" ] && [ "$IOS_ID" != "null" ]; then
+            curl -sSf -X PATCH \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              -H "Content-Type: application/json" \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/$IOS_ID" \
+              -d '{"make_latest": "false"}' || echo "iOS 设为非 latest 失败（不阻塞）"
+          fi
