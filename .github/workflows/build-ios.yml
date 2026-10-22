@@ -127,6 +127,6 @@ jobs:
           curl -sSf --retry 5 --retry-delay 10 --retry-all-errors --connect-timeout 30 -X POST \
             -H "Authorization: Bearer $GITHUB_TOKEN" \
             -H "Content-Type: application/octet-stream" \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets?name=nosign.ipa" \
+            "https://uploads.github.com/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets?name=nosign.ipa" \
             --data-binary @build/nosign.ipa
           echo "✅ IPA 已挂到 $TAG Release（安卓 APK + iOS IPA 双版本合一）"
