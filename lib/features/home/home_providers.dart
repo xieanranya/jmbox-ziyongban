@@ -33,8 +33,12 @@ class HomeTab {
   bool get isCategory => category != null;
 }
 
-/// 组合标签顺序：浏览分区在前，分类在后；「最新A漫」插到「连载更新」正后方
-/// （未找到「连载更新」时置于浏览分区之后、其余分类之前）。
+/// 组合标签顺序：浏览分区在前，分类在后；「最新A漫」插到「连载更新」正后方。
+///
+/// 匹配规则（保证安卓/iOS 两端排布一致，不依赖接口返回的精确标题）：
+/// 1. 先找标题含「连载」或「更新」的分区（兼容 连载更新 / 连载中 / 更新中 等变体）；
+/// 2. 找不到分区时再找同类分类（部分线路把连载更新放在分类里）；
+/// 3. 都没有则紧跟第一个分区（没有分区就放最前），而不是丢到列表末尾。
 List<HomeTab> buildHomeTabs(
   List<PromoteSection> sections,
   List<CategoryItem> categories,
@@ -44,19 +48,27 @@ List<HomeTab> buildHomeTabs(
     tabs.add(HomeTab(key: 's:${s.id}', title: s.title, section: s));
   }
   final rest = categories.toList();
-  final firstIdx = rest.indexWhere((c) => c.name == '最新A漫');
-  if (firstIdx >= 0) {
-    final first = rest.removeAt(firstIdx);
-    final at = tabs.indexWhere((t) => t.title == '连载更新');
+  final latestIdx = rest.indexWhere((c) => c.name.contains('最新A漫'));
+  if (latestIdx >= 0) {
+    final latest = rest.removeAt(latestIdx);
+    final at = tabs.indexWhere(_isSerialTab);
     tabs.insert(
-      at >= 0 ? at + 1 : tabs.length,
-      HomeTab(key: 'c:${first.slug}', title: first.name, category: first),
+      (at >= 0 ? at + 1 : (tabs.isNotEmpty ? 1 : 0)).clamp(0, tabs.length),
+      HomeTab(key: 'c:${latest.slug}', title: latest.name, category: latest),
     );
   }
   for (final c in rest) {
     tabs.add(HomeTab(key: 'c:${c.slug}', title: c.name, category: c));
   }
   return tabs;
+}
+
+/// 是否为「连载更新」类标签（容忍标题变体与简繁体：连载更新/連載更新/連載中/更新中）。
+/// 接口不同线路可能返回繁体文案，精确匹配会导致排布漂移（安卓/iOS 不一致）。
+bool _isSerialTab(HomeTab tab) {
+  final title = tab.title;
+  // 「更新」简繁同形；「连载/連載」两种写法都认。
+  return title.contains('连载') || title.contains('連載') || title.contains('更新');
 }
 
 /// 首页标签列表：浏览分区 + 分类（组合自 promote 与 categories 两个接口）。

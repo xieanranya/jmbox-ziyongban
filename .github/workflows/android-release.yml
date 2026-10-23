@@ -27,16 +27,13 @@ jobs:
           body: |
             ## JmBox ${{ github.ref_name }}
 
-            **画质增强（五档）**
-            - 关闭 / 标准 / 增强 / 超级：Lanczos-3 超分放大 + USM 锐化 + 清晰度/对比度
-            - AI 超分：内置 Real-ESRGAN-General-x4v3 模型（TFLite，4.9MB），GPU 优先、CPU 兜底
-
-            **其他**
-            - 代理模式：HTTP 代理（Clash/v2ray 混合端口），设置页热生效 + 连接测试
-            - 网络诊断：一键探测全部 API/图片域名可达性与延迟
+            **修复**
+            - 首页标签排序：最新A漫稳定紧跟连载更新（兼容繁体/标题变体，不同接口线路下排布一致）
+            - 安卓与 iOS 首页布局现已完全一致
 
             **文件**
-            - `JmBox_v1.0.50.apk`：Android 安装包（debug 签名，直接安装）
+            - `JmBox_v1.0.51.apk`：Android 安装包（debug 签名，直接安装）
+            - `nosign.ipa`：iOS 未签名安装包（Sideloadly / AltStore 签名后安装）
           files: release/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
