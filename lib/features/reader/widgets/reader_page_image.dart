@@ -19,6 +19,7 @@ import '../../../core/constants/enhance.dart';
 import '../../../core/utils/jm_crypto.dart';
 import '../enhance/enhance_service.dart';
 import '../page_geometry.dart';
+import '../reader_image_cache.dart';
 
 /// 转圈延迟出现的时间：命中磁盘缓存的页几乎瞬间解出，转圈立刻出现再消失就是一下灰闪。
 const Duration _spinnerDelay = Duration(milliseconds: 180);
@@ -72,6 +73,10 @@ class ReaderPageImage extends StatefulWidget {
 class _ReaderPageImageState extends State<ReaderPageImage> {
   ui.Image? _image;
 
+  /// 当前显示图对应的缓存句柄（图归 ReaderImageCache 所有，用完必须 release）。
+  /// 增强图走 EnhanceService 自己的缓存，此时 [_cached] 仍指向原图。
+  CachedImage? _cached;
+
   /// [_image] 是否由本组件独占持有（原图 = true 需 dispose；增强图归缓存，false）。
   bool _imageOwned = false;
 
@@ -86,9 +91,15 @@ class _ReaderPageImageState extends State<ReaderPageImage> {
   // 本次加载的代际标识：widget 参数变化或重试时递增，旧回调据此丢弃结果。
   int _generation = 0;
 
+  /// 首次依赖确定后再加载：[_load] 里要读 MediaQuery（屏幕像素比），
+  /// 而 initState 阶段不允许依赖 InheritedWidget。只需触发一次。
+  bool _loadStarted = false;
+
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_loadStarted) return;
+    _loadStarted = true;
     _load();
   }
 
@@ -124,27 +135,38 @@ class _ReaderPageImageState extends State<ReaderPageImage> {
       _failed = false;
     });
     try {
-      final bytes = await widget.readPhoto(widget.chapterId, widget.imageName);
-      // scramble 随页自取：控制器 memo 缓存，多页共享一次解析；await 确保用正确阈值解码。
-      final scrambleId = await widget.scrambleOf(widget.chapterId);
-      final image = await _decodeImage(
-        bytes,
-        scrambleId: scrambleId,
-        id: widget.chapterId,
-        filename: widget.imageName,
+      // 解码宽度按屏幕物理像素取（上限 1600）：JM 原图常 2000+ 宽，全分辨率解码
+      // 单页几十到上百毫秒且吃内存；按显示宽度解码观感无差，滚动明显更顺。
+      final targetWidth = _targetDecodeWidth(context, widget.viewportWidth);
+      final cached = await ReaderImageCache.instance.acquire(
+        '${widget.chapterId}/${widget.imageName}@$targetWidth',
+        () async {
+          final bytes = await widget.readPhoto(widget.chapterId, widget.imageName);
+          // scramble 随页自取：控制器 memo 缓存，多页共享一次解析；await 确保用正确阈值解码。
+          final scrambleId = await widget.scrambleOf(widget.chapterId);
+          return _decodeImage(
+            bytes,
+            scrambleId: scrambleId,
+            id: widget.chapterId,
+            filename: widget.imageName,
+            targetWidth: targetWidth,
+          );
+        },
       );
       if (!mounted || generation != _generation) {
-        image.dispose();
+        cached.release();
         return;
       }
       _spinnerTimer?.cancel();
       // 回填真实尺寸，驱动本章中位数估算收敛（进度条占位随之变准）。
       // 增强为等比放大，宽高比不变，几何记录用原图尺寸即可。
-      widget.geometry.record(widget.index, image.width, image.height);
+      widget.geometry.record(widget.index, cached.image.width, cached.image.height);
+      final image = cached.image;
       setState(() {
         _releaseImage();
+        _cached = cached;
         _image = image;
-        _imageOwned = true;
+        _imageOwned = false; // 图归缓存所有，本组件不 dispose
         _loading = false;
       });
 
@@ -185,8 +207,10 @@ class _ReaderPageImageState extends State<ReaderPageImage> {
     _load();
   }
 
-  /// 释放当前图：仅 dispose 本组件独占持有的原图；增强图归缓存，只断引用。
+  /// 释放当前图：归还解码缓存引用（图本身由缓存统一 dispose）。
   void _releaseImage() {
+    _cached?.release();
+    _cached = null;
     if (_imageOwned) _image?.dispose();
     _image = null;
     _imageOwned = false;
@@ -219,7 +243,7 @@ class _ReaderPageImageState extends State<ReaderPageImage> {
         height: placeholderHeight,
         // 增强图通常大于显示尺寸（供系统降采样），用中等过滤避免摩尔纹；
         // 原图维持既有默认过滤。
-        filterQuality: _imageOwned ? FilterQuality.low : FilterQuality.medium,
+        filterQuality: _cached != null ? FilterQuality.low : FilterQuality.medium,
       );
       if (_enhancing) {
         child = Stack(
@@ -311,6 +335,44 @@ class _ReaderPageImageState extends State<ReaderPageImage> {
   }
 }
 
+// ---- 解码宽度与预取 ----
+
+/// 解码目标宽度：屏幕物理像素宽（上限 1600）。低于此值会糊，高于此值纯属浪费内存与解码时间。
+int _targetDecodeWidth(BuildContext context, double viewportWidth) {
+  final dpr = MediaQuery.devicePixelRatioOf(context);
+  final width = viewportWidth > 0 ? viewportWidth : 400;
+  return (width * dpr).round().clamp(360, 1600);
+}
+
+/// 预取某一页的解码图（含分块重排），供列表在翻页前提前备好。
+///
+/// 命中缓存或已有在途解码时直接返回，不会重复解码；失败静默（真正翻到该页会再试）。
+Future<void> prefetchReaderPage({
+  required int chapterId,
+  required String imageName,
+  required double viewportWidth,
+  required double devicePixelRatio,
+  required Future<Uint8List> Function(int chapterId, String imageName) readPhoto,
+  required Future<int> Function(int chapterId) scrambleOf,
+}) async {
+  final width = viewportWidth > 0 ? viewportWidth : 400;
+  final targetWidth = (width * devicePixelRatio).round().clamp(360, 1600);
+  await ReaderImageCache.instance.prefetch(
+    '$chapterId/$imageName@$targetWidth',
+    () async {
+      final bytes = await readPhoto(chapterId, imageName);
+      final scrambleId = await scrambleOf(chapterId);
+      return _decodeImage(
+        bytes,
+        scrambleId: scrambleId,
+        id: chapterId,
+        filename: imageName,
+        targetWidth: targetWidth,
+      );
+    },
+  );
+}
+
 // ---- 解码（含重排）----
 
 /// 用 dart:ui（Skia）解码图片字节并还原分块，返回可直接显示的 [ui.Image]。
@@ -321,8 +383,9 @@ Future<ui.Image> _decodeImage(
   required int scrambleId,
   required int id,
   required String filename,
+  int? targetWidth,
 }) async {
-  final codec = await ui.instantiateImageCodec(bytes);
+  final codec = await ui.instantiateImageCodec(bytes, targetWidth: targetWidth);
   final frame = await codec.getNextFrame();
   final image = frame.image;
   codec.dispose(); // 帧已取出，codec 不再需要

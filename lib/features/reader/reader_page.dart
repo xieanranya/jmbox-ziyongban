@@ -6,6 +6,7 @@
 /// 跳页「先推页码再滚动 + 等帧二次确认」。
 library;
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -20,6 +21,7 @@ import '../../shared/widgets/async_view.dart';
 import '../settings/settings_providers.dart';
 import 'enhance/enhance_service.dart';
 import 'page_geometry.dart';
+import 'reader_image_cache.dart';
 import 'reader_controller.dart';
 import 'reader_providers.dart';
 import 'widgets/reader_page_image.dart';
@@ -64,6 +66,20 @@ class _ReaderViewState extends ConsumerState<_ReaderView> {
   final ItemScrollController _itemScrollController = ItemScrollController();
   final ItemPositionsListener _itemPositionsListener = ItemPositionsListener.create();
 
+  /// 统一滚动物理：iOS / 安卓同一手感。
+  /// Flutter 默认按平台区分（iOS 弹性、安卓夹紧），两端收尾方式不同、观感生硬；
+  /// 统一用 Bouncing —— 惯性衰减更柔和、边界回弹自然，向上翻动不再「顿住」。
+  static const ScrollPhysics _readerScrollPhysics = BouncingScrollPhysics(
+    parent: AlwaysScrollableScrollPhysics(),
+  );
+
+  /// 当前章的图片名列表与视口宽（供预取相邻页使用）。
+  List<String> _pageImages = const <String>[];
+  double _pageViewportWidth = 0;
+
+  /// 上次触发预取的页码，避免每帧都重复投递预取。
+  int _lastPrefetchPage = -1;
+
   late final ReaderController _controller;
 
   /// 会话级页面几何缓存：chapterId → 该章各页高宽比。属渲染测量数据，
@@ -102,6 +118,32 @@ class _ReaderViewState extends ConsumerState<_ReaderView> {
         (p) => (index: p.index, leading: p.itemLeadingEdge, trailing: p.itemTrailingEdge),
       ),
     );
+    _prefetchNeighbors();
+  }
+
+  /// 预取当前页前后各一页的解码图：翻页时不用现解，滚动更连贯。
+  /// 命中缓存/已有在途解码会直接返回，重复调用无额外开销。
+  void _prefetchNeighbors() {
+    final images = _pageImages;
+    if (images.isEmpty || !mounted) return;
+    final page = _controller.currentPage;
+    if (page == _lastPrefetchPage) return;
+    _lastPrefetchPage = page;
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    for (final offset in const <int>[1, -1]) {
+      final target = page + offset;
+      if (target < 0 || target >= images.length) continue;
+      unawaited(
+        prefetchReaderPage(
+          chapterId: _controller.chapterId,
+          imageName: images[target],
+          viewportWidth: _pageViewportWidth,
+          devicePixelRatio: dpr,
+          readPhoto: _controller.readPhoto,
+          scrambleOf: _controller.scramble,
+        ),
+      );
+    }
   }
 
   /// 落位确认：跳页后等帧复查，首帧量不准则再滚一次。
@@ -150,11 +192,17 @@ class _ReaderViewState extends ConsumerState<_ReaderView> {
     // 换章即释放上一章增强图（幂等；同章重建不重复触发）。
     if (_renderedChapterId != chapterId) {
       final previous = _renderedChapterId;
-      if (previous != null) EnhanceService.instance.evictChapter(previous);
+      if (previous != null) {
+        EnhanceService.instance.evictChapter(previous);
+        ReaderImageCache.instance.evictChapter(previous);
+      }
       _renderedChapterId = chapterId;
     }
     final geometry = _geometryFor(chapterId);
     final viewportWidth = MediaQuery.sizeOf(context).width;
+    // 记录给预取用（每次构建都刷新，换章/换设备宽度都跟着走）。
+    _pageImages = images;
+    _pageViewportWidth = viewportWidth;
     // 画质增强档位随设随生效：设置页/阅读器内切换后本层重建，页面组件didUpdateWidget 重载。
     final enhanceLevel = ref.watch(settingsProvider).value?.enhanceLevel ?? EnhanceLevel.off;
     // 放大目标 = 视口宽 × 屏幕物理像素比（保证增强图不低于屏幕原生分辨率）。
@@ -190,7 +238,7 @@ class _ReaderViewState extends ConsumerState<_ReaderView> {
         initialScrollIndex: _controller.currentPage.clamp(0, images.length - 1),
         itemScrollController: _itemScrollController,
         itemPositionsListener: _itemPositionsListener,
-        physics: const ClampingScrollPhysics(),
+        physics: _readerScrollPhysics,
         itemBuilder: (context, index) {
           return ReaderPageImage(
             // key 含章节 id：换章后即使 index 相同也是不同图片，强制重建。

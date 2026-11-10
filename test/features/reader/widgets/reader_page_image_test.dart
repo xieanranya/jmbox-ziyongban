@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jmbox/features/reader/page_geometry.dart';
+import 'package:jmbox/features/reader/reader_image_cache.dart';
 import 'package:jmbox/features/reader/widgets/reader_page_image.dart';
 
 final Uint8List _pngBytes = base64Decode(
@@ -29,6 +30,9 @@ ReaderPageImage _image({
 );
 
 void main() {
+  // 解码缓存是会话级单例：每个用例前清空，避免上一用例的解码结果串到下一用例。
+  setUp(() => ReaderImageCache.instance.clear());
+
   testWidgets('快速命中缓存时直接显示图片并回填真实比例', (tester) async {
     final geometry = PageGeometry();
     await tester.pumpWidget(
